@@ -1,7 +1,7 @@
 /* Project feed and submission. Supabase Row Level Security is the source of truth. */
 (() => {
   const client = () => window.supabaseClient;
-  const selectFields = "id,title,description,project_url,tech_stack,screenshot_url,user_id,created_at,users(display_name,avatar_url)";
+  const selectFields = "id,title,description,project_url,tech_stack,screenshot_url,user_id,created_at,codetribe_users(display_name,avatar_url)";
   function validHttpUrl(value) {
     try { const u = new URL(value); return (u.protocol === "https:" || u.protocol === "http:") && !u.username && !u.password; }
     catch { return false; }
@@ -13,7 +13,7 @@
   }
   async function listProjects() {
     if (!client()) return [];
-    const { data, error } = await client().from("projects").select(selectFields).order("created_at", { ascending: false }).limit(60);
+    const { data, error } = await client().from("codetribe_projects").select(selectFields).order("created_at", { ascending: false }).limit(60);
     if (error) throw error;
     return data || [];
   }
@@ -29,7 +29,7 @@
     if (description.length < 10 || description.length > 500) throw new Error("Description must be 10–500 characters.");
     if (!validGitHubRepo(project_url)) throw new Error("Enter a valid GitHub repository URL, like https://github.com/owner/repo.");
     if (screenshot_url && !validHttpUrl(screenshot_url)) throw new Error("Screenshot must be a valid HTTP or HTTPS URL.");
-    const { data, error } = await client().from("projects").insert({
+    const { data, error } = await client().from("codetribe_projects").insert({
       user_id: user.id, title, description, project_url,
       tech_stack, screenshot_url: screenshot_url || null
     }).select(selectFields).single();
@@ -38,7 +38,7 @@
   }
   async function deleteProject(id) {
     if (!window.CodeTribeAuth.user) throw new Error("Sign in first.");
-    const { error } = await client().from("projects").delete().eq("id", id);
+    const { error } = await client().from("codetribe_projects").delete().eq("id", id);
     if (error) throw error;
   }
   window.CodeTribeDB = { listProjects, createProject, deleteProject, validHttpUrl };
