@@ -33,7 +33,7 @@
     $("messageForm").querySelector("button").disabled = false;
     $("chatDialog").showModal();
     try {
-      const { data, error } = await client().from("messages")
+      const { data, error } = await client().from("codetribe_messages")
         .select("id,project_id,sender_id,recipient_id,body,created_at")
         .eq("project_id", project.id).order("created_at", { ascending: true }).limit(200);
       if (error) throw error;
@@ -60,7 +60,7 @@
       $("chatNotice").textContent = "Could not load messages: " + error.message;
     }
     channel = client().channel("project-chat-" + project.id + "-" + user.id)
-      .on("postgres_changes", { event:"INSERT", schema:"public", table:"messages", filter:"project_id=eq." + project.id }, payload => {
+      .on("postgres_changes", { event:"INSERT", schema:"public", table:"codetribe_messages", filter:"project_id=eq." + project.id }, payload => {
         const m = payload.new;
         const relevant = (m.sender_id === user.id && m.recipient_id === activeRecipientId) ||
           (m.sender_id === activeRecipientId && m.recipient_id === user.id);
@@ -76,7 +76,7 @@
     if (!body || !activeProject || !activeRecipientId || !user) return;
     const button = $("messageForm").querySelector("button"); button.disabled = true;
     try {
-      const { data, error } = await client().from("messages").insert({
+      const { data, error } = await client().from("codetribe_messages").insert({
         project_id: activeProject.id, sender_id: user.id, recipient_id: activeRecipientId, body
       }).select("id,project_id,sender_id,recipient_id,body,created_at").single();
       if (error) throw error;
