@@ -1,10 +1,8 @@
-/* Direct messages are stored in Supabase and streamed with Realtime. RLS limits each
-   message to its sender and recipient. Never trust client-side IDs for authorization. */
+/* Realtime direct messages. RLS remains the authorization boundary. */
 (() => {
   const client = () => window.supabaseClient;
-  let channel = null, activeProject = null, seenIds = new Set();
+  let channel = null, activeProject = null, activeRecipientId = null, seenIds = new Set();
   const $ = id => document.getElementById(id);
-  const escapeText = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   function renderMessage(message) {
     if (seenIds.has(message.id)) return;
     seenIds.add(message.id);
@@ -25,41 +23,61 @@
     const user = window.CodeTribeAuth.user;
     if (!client()) { window.CodeTribeApp.toast("Configure Supabase to use live chat."); return; }
     if (!user) { window.CodeTribeApp.toast("Sign in with Google to message developers."); await window.CodeTribeAuth.signIn(); return; }
-    if (project.user_id === user.id) { window.CodeTribeApp.toast("This is your project — open it from your GitHub repository."); return; }
     close(false);
-    activeProject = project; seenIds = new Set();
-    $("chatTitle").textContent = "Talk with " + (project.users?.display_name || "the developer");
+    activeProject = project; activeRecipientId = project.user_id; seenIds = new Set();
+    $("chatList");
+    $("chatTitle").textContent = project.user_id === user.id ? "Project conversations" : "Talk with " + (project.users?.display_name || "the developer");
     $("chatSubtitle").textContent = project.title;
-    $("chatNotice").textContent = "Messages are visible only to you and this project's creator.";
-    $("messageList").innerHTML = "";
-    $("messageInput").value = "";
+    $("chatNotice").textContent = "Messages are visible only to conversation participants.";
+    $("messageList").innerHTML = ""; $("messageInput").value = "";
     $("messageForm").querySelector("button").disabled = false;
     $("chatDialog").showModal();
     try {
-      const { data, error } = await client().from("messages").select("id,project_id,sender_id,recipient_id,body,created_at").eq("project_id", project.id).order("created_at", { ascending: true }).limit(200);
+      const { data, error } = await client().from("messages")
+        .select("id,project_id,sender_id,recipient_id,body,created_at")
+        .eq("project_id", project.id).order("created_at", { ascending: true }).limit(200);
       if (error) throw error;
-      if (!data.length) showEmpty(); else data.forEach(renderMessage);
+      let messages = data || [];
+      if (project.user_id === user.id) {
+        const latestVisitorMessage = [...messages].reverse().find(m => m.sender_id !== user.id && m.recipient_id === user.id);
+        if (!latestVisitorMessage) {
+          $("chatNotice").textContent = "No one has messaged about this project yet. Visitors can start a conversation from this card.";
+          $("messageForm").querySelector("button").disabled = true;
+          showEmpty();
+          return;
+        }
+        activeRecipientId = latestVisitorMessage.sender_id;
+        messages = messages.filter(m => (m.sender_id === user.id && m.recipient_id === activeRecipientId) ||
+          (m.sender_id === activeRecipientId && m.recipient_id === user.id));
+        $("chatTitle").textContent = "Reply to a developer";
+        $("chatNotice").textContent = "Replying to the latest person who contacted you about this project.";
+      } else {
+        messages = messages.filter(m => (m.sender_id === user.id && m.recipient_id === project.user_id) ||
+          (m.sender_id === project.user_id && m.recipient_id === user.id));
+      }
+      if (!messages.length) showEmpty(); else messages.forEach(renderMessage);
     } catch (error) {
       $("chatNotice").textContent = "Could not load messages: " + error.message;
     }
     channel = client().channel("project-chat-" + project.id + "-" + user.id)
       .on("postgres_changes", { event:"INSERT", schema:"public", table:"messages", filter:"project_id=eq." + project.id }, payload => {
-        if (payload.new.sender_id === user.id || payload.new.recipient_id === user.id) {
+        const m = payload.new;
+        const relevant = (m.sender_id === user.id && m.recipient_id === activeRecipientId) ||
+          (m.sender_id === activeRecipientId && m.recipient_id === user.id);
+        if (relevant) {
           const empty = $("messageList").querySelector(".message-empty"); if (empty) empty.remove();
-          renderMessage(payload.new);
+          renderMessage(m);
         }
       }).subscribe();
   }
   async function send(event) {
     event.preventDefault();
     const user = window.CodeTribeAuth.user, body = $("messageInput").value.trim();
-    if (!body || !activeProject || !user) return;
-    const button = $("messageForm").querySelector("button");
-    button.disabled = true;
+    if (!body || !activeProject || !activeRecipientId || !user) return;
+    const button = $("messageForm").querySelector("button"); button.disabled = true;
     try {
       const { data, error } = await client().from("messages").insert({
-        project_id: activeProject.id, sender_id: user.id,
-        recipient_id: activeProject.user_id, body
+        project_id: activeProject.id, sender_id: user.id, recipient_id: activeRecipientId, body
       }).select("id,project_id,sender_id,recipient_id,body,created_at").single();
       if (error) throw error;
       const empty = $("messageList").querySelector(".message-empty"); if (empty) empty.remove();
@@ -70,7 +88,8 @@
   }
   function close(clear = true) {
     if (channel && client()) client().removeChannel(channel);
-    channel = null; if (clear) activeProject = null;
+    channel = null;
+    if (clear) { activeProject = null; activeRecipientId = null; }
   }
   window.CodeTribeChat = { open, send, close };
 })();
