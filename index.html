@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#090b10"><meta name="description" content="CodeTribe — discover projects, share what you're building, and talk directly with developers.">
+  <title>CodeTribe — Build in public</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Manrope','sans-serif'],mono:['DM Mono','monospace']}}}}</script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="./js/config.js"></script><script defer src="./js/auth.js"></script><script defer src="./js/database.js"></script><script defer src="./js/chat.js"></script><script defer src="./js/app.js"></script>
+</head>
+<body class="min-h-screen">
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="CodeTribe home"><span class="brand-mark">&lt;/&gt;</span><span>CodeTribe<span class="brand-dot">.</span></span></a>
+    <nav class="nav-links"><a href="#explore">Explore</a><a href="#about">Community</a></nav>
+    <div class="nav-actions"><button id="submitProjectBtn" class="btn btn-primary hidden">＋ Submit project</button><button id="signInBtn" class="btn btn-ghost"><span class="google-g">G</span> Continue with Google</button><div id="userMenu" class="user-menu hidden"><img id="userAvatar" alt="" /><button id="signOutBtn" class="btn btn-ghost">Sign out</button></div></div>
+  </header>
+  <main class="page-shell">
+    <section class="hero">
+      <div class="eyebrow"><span class="live-dot"></span> A community for people who build</div>
+      <h1>Good ideas deserve<br><span class="gradient-text">to be seen.</span></h1>
+      <p class="hero-copy">Discover what developers are creating, share your latest build, and connect with the people behind the code.</p>
+      <div class="hero-actions"><a href="#explore" class="btn btn-primary">Explore projects <span aria-hidden="true">↘</span></a><button id="heroSubmitBtn" class="btn btn-outline">Share your work <span aria-hidden="true">↗</span></button></div>
+      <div class="hero-stats"><div><strong id="projectCount">—</strong><span>projects shared</span></div><i></i><div><strong>∞</strong><span>ideas to explore</span></div><i></i><div><strong>1 tribe</strong><span>building together</span></div></div>
+      <div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div><div class="hero-code"><span>const</span> community = <b>"CodeTribe"</b>;<br><span>build</span>(community);<i>▍</i></div>
+    </section>
+    <section id="explore" class="projects-section">
+      <div class="section-heading"><div><div class="eyebrow">THE SHOWCASE</div><h2>Made by the tribe<span class="brand-dot">.</span></h2><p class="muted">Real projects. Real people. Always building.</p></div><div class="feed-controls"><label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="Search projects..." aria-label="Search projects"></label><select id="sortSelect" aria-label="Sort projects"><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></div></div>
+      <div id="feedStatus" class="status-line" role="status">Connecting to the community…</div><div id="projectGrid" class="project-grid"></div>
+      <div id="emptyState" class="empty-state hidden"><div class="empty-icon">⌘</div><h3>No projects here yet</h3><p>Be the first to share something you're building.</p><button class="btn btn-primary" id="emptySubmitBtn">Submit the first project</button></div>
+    </section>
+    <section id="about" class="community-banner"><div class="community-icon">✳</div><div><div class="eyebrow">BETTER TOGETHER</div><h2>Build it. Share it. Talk about it.</h2><p>CodeTribe is a home for side projects, experiments, and the developers who make them happen.</p></div><a href="#explore" class="text-link">Meet the tribe <span>↗</span></a></section>
+    <footer><a class="brand footer-brand" href="#"><span class="brand-mark">&lt;/&gt;</span><span>CodeTribe<span class="brand-dot">.</span></span></a><span>Made for makers, by makers.</span><span class="font-mono">© <span id="year"></span> CODETRIBE</span></footer>
+  </main>
+  <dialog id="projectDialog" class="modal"><form id="projectForm" class="modal-panel"><div class="modal-head"><div><div class="eyebrow">YOUR NEXT BUILD</div><h2>Submit a project</h2><p class="muted">Put your work in front of the community.</p></div><button type="button" class="icon-btn" data-close="projectDialog" aria-label="Close">×</button></div>
+    <label class="field-label">Project name<input name="title" maxlength="80" required placeholder="e.g. NXT-SPEED"></label>
+    <label class="field-label">Short description<textarea name="description" rows="3" maxlength="500" required placeholder="What does it do, and why did you build it?"></textarea></label>
+    <label class="field-label">GitHub repository URL<input name="project_url" type="url" required placeholder="https://github.com/you/project"></label>
+    <label class="field-label">Tech stack <span class="optional">(comma separated)</span><input name="tech_stack" maxlength="180" placeholder="JavaScript, Supabase, Tailwind CSS"></label>
+    <label class="field-label">Screenshot URL <span class="optional">(optional)</span><input name="screenshot_url" type="url" placeholder="https://..."></label>
+    <div id="projectFormError" class="form-error" role="alert"></div><button class="btn btn-primary submit-wide" type="submit">Publish project <span>↗</span></button>
+  </form></dialog>
+  <dialog id="chatDialog" class="modal chat-modal"><section class="modal-panel chat-panel"><div class="modal-head chat-head"><div class="creator-heading"><div class="chat-avatar">✳</div><div><div class="eyebrow">DIRECT MESSAGE</div><h2 id="chatTitle">Talk with Dev</h2><p id="chatSubtitle" class="muted">Start a conversation with the creator.</p></div></div><button type="button" class="icon-btn" data-close="chatDialog" aria-label="Close chat">×</button></div><div id="chatNotice" class="chat-notice"></div><div id="messageList" class="message-list" aria-live="polite"></div><form id="messageForm" class="message-form"><input id="messageInput" maxlength="2000" autocomplete="off" placeholder="Write a message…" aria-label="Message" required><button class="btn btn-primary" type="submit" aria-label="Send message">↑</button></form></section></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body></html>
