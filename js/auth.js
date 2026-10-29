@@ -11,7 +11,7 @@
       display_name: String(metadata.full_name || metadata.name || user.email || "Developer").slice(0,120),
       avatar_url: typeof metadata.avatar_url === "string" ? metadata.avatar_url.slice(0,1000) : null
     };
-    const { data, error } = await client().from("users").upsert(row, { onConflict: "id" }).select().single();
+    const { data, error } = await client().from("codetribe_users").upsert(row, { onConflict: "id" }).select().single();
     if (error) console.warn("Profile sync will retry later:", error.message);
     return data || row;
   }
